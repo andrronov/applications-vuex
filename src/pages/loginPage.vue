@@ -1,5 +1,9 @@
 <script>
+import axios from "axios";
+import loadingIndicator from "../components/UI/loadingIndicator.vue";
+
 export default {
+  components: { loadingIndicator },
   data() {
     return {
       login: "",
@@ -7,11 +11,45 @@ export default {
       loginFocused: false,
       passwordFocused: false,
       showPassword: false,
+      error: null,
+      loading: false,
     };
+  },
+  computed: {
+    isInputsValid() {
+      return this.login.trim().length > 0 && this.password.trim().length > 0;
+    },
   },
   methods: {
     togglePassword() {
       this.showPassword = !this.showPassword;
+    },
+    handleLogin() {
+      if (this.isInputsValid) {
+        this.loading = true;
+        console.log(this.loading);
+        axios
+          .post("https://dev.moydomonline.ru/api/auth/login/", {
+            username: this.login.replace(/\D/g, ""),
+            password: this.password,
+          })
+          .then((res) => {
+            sessionStorage.setItem("key", res.data.key);
+            this.$router.push("/");
+          })
+          .catch((err) => {
+            this.showError(err);
+          })
+          .finally((this.loading = false));
+      } else {
+        this.showError("Заполните поля");
+      }
+    },
+    showError(log) {
+      this.error = log;
+      setTimeout(() => {
+        this.error = null;
+      }, 5000);
     },
   },
 };
@@ -19,6 +57,7 @@ export default {
 
 <template>
   <div class="wrapper">
+    <loading-indicator v-if="loading" />
     <form class="card">
       <div class="card__header">
         <span>Авторизация</span>
@@ -30,7 +69,7 @@ export default {
             >Логин или Телефон</label
           >
           <input
-            type="text"
+            type="tel"
             v-model="login"
             @focus="loginFocused = true"
             @blur="loginFocused = false"
@@ -54,7 +93,8 @@ export default {
           </span>
         </div>
       </div>
-      <button class="card__button">Войти</button>
+      <button @click.prevent="handleLogin" class="card__button">Войти</button>
+      <p v-if="error" class="card__error">{{ error }}</p>
     </form>
     <img src="/background.webp" alt="background" />
   </div>
@@ -192,6 +232,14 @@ $border_radius: 5px;
         background-color: #338337;
         transition: background-color 200ms ease-in;
       }
+    }
+
+    .card__error {
+      bottom: 0px;
+      position: absolute;
+      color: red;
+      font-weight: 500;
+      font-size: 0.9rem;
     }
   }
 }
